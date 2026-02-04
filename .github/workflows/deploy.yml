@@ -1,11 +1,41 @@
-name: CI CD Pipeline
+name: Deploy Website to AWS
 
-on: push
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS Credentials (OIDC)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::YOUR_ACCOUNT_ID:role/github-actions-deploy-role
+        aws-region: ap-south-1
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Init
+      run: terraform init
+      working-directory: terraform
+
+    - name: Terraform Apply
+      run: terraform apply -auto-approve
+      working-directory: terraform
+
+    - name: Upload Website Files to S3
+      run: |
+        aws s3 sync . s3://your-bucket-name --exclude ".git/*" --exclude "terraform/*"
+
